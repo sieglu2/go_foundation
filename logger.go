@@ -41,6 +41,10 @@ func Logger() Logging {
 	return globalLogger
 }
 
+func OverrideGlobalLogger(logging Logging) {
+	globalLogger = logging
+}
+
 func NewQuietLogger(lvlStr string) *QuietLogger {
 	// First, define our level-handling logic.
 	globalLevel, err := zapcore.ParseLevel(lvlStr)
