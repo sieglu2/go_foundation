@@ -68,7 +68,7 @@ func (c *ExcelWriter) SaveFile() error {
 	return nil
 }
 
-func (c *ExcelWriter) AppendDataAsRows(sheetName string, bars []any) error {
+func (c *ExcelWriter) AppendDataAsRows(sheetName string, labelTagStr string, bars []any) error {
 	logger := Logger()
 
 	if c.fileHandle == nil {
@@ -91,7 +91,7 @@ func (c *ExcelWriter) AppendDataAsRows(sheetName string, bars []any) error {
 	startRow := len(rows)
 	if startRow == 0 {
 		// If sheet is empty, write headers first
-		headers := getHeadersFromTags(bars[0])
+		headers := getHeadersFromTags(labelTagStr, bars[0])
 		for col, header := range headers {
 			cell := fmt.Sprintf("%c1", 'A'+col)
 			if err := c.fileHandle.SetCellValue(sheetName, cell, header); err != nil {
@@ -119,7 +119,7 @@ func (c *ExcelWriter) AppendDataAsRows(sheetName string, bars []any) error {
 	return nil
 }
 
-func (c *ExcelWriter) WriteStructFieldsAsRows(sheetName string, data any) error {
+func (c *ExcelWriter) WriteStructFieldsAsRows(sheetName string, labelTagStr string, data any) error {
 	logger := Logger()
 
 	if c.fileHandle == nil {
@@ -152,9 +152,9 @@ func (c *ExcelWriter) WriteStructFieldsAsRows(sheetName string, data any) error 
 		field := t.Field(i)
 		value := v.Field(i)
 
-		// Get the xlsx tag if it exists
-		xlsxTag := field.Tag.Get("xlsx")
-		fieldName := xlsxTag
+		// Get the label tag if it exists
+		labelTag := field.Tag.Get(labelTagStr)
+		fieldName := labelTag
 		if fieldName == "" {
 			fieldName = field.Name
 		}
@@ -194,13 +194,13 @@ func (c *ExcelWriter) WriteStructFieldsAsRows(sheetName string, data any) error 
 	return nil
 }
 
-func getHeadersFromTags(c any) []string {
+func getHeadersFromTags(labelTagStr string, c any) []string {
 	t := reflect.TypeOf(c)
 	var headers []string
 
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
-		if header, ok := field.Tag.Lookup("xlsx"); ok {
+		if header, ok := field.Tag.Lookup(labelTagStr); ok {
 			headers = append(headers, header)
 		} else {
 			headers = append(headers, field.Name)
