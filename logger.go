@@ -25,17 +25,22 @@ func getLogLevel() string {
 }
 
 type Logging interface {
-	With(args ...interface{}) Logging
-	Debug(args ...interface{})
-	Info(args ...interface{})
-	Warn(args ...interface{})
-	Error(args ...interface{})
-	Fatal(args ...interface{})
-	Debugf(template string, args ...interface{})
-	Infof(template string, args ...interface{})
-	Warnf(template string, args ...interface{})
-	Errorf(template string, args ...interface{})
-	Fatalf(template string, args ...interface{})
+	With(args ...any) Logging
+
+	Debug(args ...any)
+	Info(args ...any)
+	Warn(args ...any)
+	Error(args ...any)
+	Fatal(args ...any)
+
+	Debugf(template string, args ...any)
+	Infof(template string, args ...any)
+	Warnf(template string, args ...any)
+	Errorf(template string, args ...any)
+	Fatalf(template string, args ...any)
+
+	Critical(args ...any)
+	Criticalf(template string, args ...any)
 }
 
 func Logger() Logging {
@@ -47,8 +52,22 @@ func OverrideGlobalLogger(logging Logging) {
 }
 
 func NewSugarLogger(lvlStr string) *SugarLogger {
+	zapLogger := newZapLogger(lvlStr)
+	return &SugarLogger{
+		internal: zapLogger,
+	}
+}
+
+func NewCriticalLogger() *CriticalLogger {
+	zapLogger := newZapLogger("info")
+	return &CriticalLogger{
+		internal: zapLogger,
+	}
+}
+
+func newZapLogger(lvlStr string) *zap.SugaredLogger {
 	// First, define our level-handling logic.
-	globalLevel, err := zapcore.ParseLevel(lvlStr)
+	targetLevel, err := zapcore.ParseLevel(lvlStr)
 	if err != nil {
 		log.Fatalf("failed to initialize global logger: %v", err)
 	}
@@ -62,7 +81,7 @@ func NewSugarLogger(lvlStr string) *SugarLogger {
 		return lvl >= zapcore.ErrorLevel
 	})
 	lowPriority := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
-		return lvl >= globalLevel && lvl < zapcore.ErrorLevel
+		return lvl >= targetLevel && lvl < zapcore.ErrorLevel
 	})
 	consoleInfos := zapcore.Lock(os.Stdout)
 	consoleErrors := zapcore.Lock(os.Stderr)
@@ -82,109 +101,120 @@ func NewSugarLogger(lvlStr string) *SugarLogger {
 	zapLogger := zap.New(core)
 	zap.RedirectStdLog(zapLogger)
 
-	return &SugarLogger{
-		internal: zapLogger.Sugar(),
-	}
-}
-
-func NewEmptyLogger() *EmptyLogger {
-	return &EmptyLogger{}
+	return zapLogger.Sugar()
 }
 
 type SugarLogger struct {
 	internal *zap.SugaredLogger
 }
 
-func (s *SugarLogger) With(args ...interface{}) Logging {
+func (s *SugarLogger) With(args ...any) Logging {
 	return &SugarLogger{
 		internal: s.internal.With(args...),
 	}
 }
 
-func (s *SugarLogger) Debug(args ...interface{}) {
+func (s *SugarLogger) Debug(args ...any) {
 	s.internal.Debug(args...)
 }
 
-func (s *SugarLogger) Info(args ...interface{}) {
+func (s *SugarLogger) Info(args ...any) {
 	s.internal.Info(args...)
 }
 
-func (s *SugarLogger) Warn(args ...interface{}) {
+func (s *SugarLogger) Warn(args ...any) {
 	s.internal.Warn(append(args, "\nCallstack:\n", GetCallStack()))
 }
 
-func (s *SugarLogger) Error(args ...interface{}) {
+func (s *SugarLogger) Error(args ...any) {
 	s.internal.Error(append(args, "\nCallstack:\n", GetCallStack()))
 }
 
-func (s *SugarLogger) Fatal(args ...interface{}) {
+func (s *SugarLogger) Fatal(args ...any) {
 	s.internal.Fatal(append(args, "\nCallstack:\n", GetCallStack()))
 }
 
-func (s *SugarLogger) Debugf(template string, args ...interface{}) {
+func (s *SugarLogger) Debugf(template string, args ...any) {
 	s.internal.Debugf(template, args...)
 }
 
-func (s *SugarLogger) Infof(template string, args ...interface{}) {
+func (s *SugarLogger) Infof(template string, args ...any) {
 	s.internal.Infof(template, args...)
 }
 
-func (s *SugarLogger) Warnf(template string, args ...interface{}) {
+func (s *SugarLogger) Warnf(template string, args ...any) {
 	s.internal.Warn(appendCallstack(template, args...))
 }
 
-func (s *SugarLogger) Errorf(template string, args ...interface{}) {
+func (s *SugarLogger) Errorf(template string, args ...any) {
 	s.internal.Error(appendCallstack(template, args...))
 }
 
-func (s *SugarLogger) Fatalf(template string, args ...interface{}) {
+func (s *SugarLogger) Fatalf(template string, args ...any) {
 	s.internal.Fatal(appendCallstack(template, args...))
 }
 
-type EmptyLogger struct {
+func (s *SugarLogger) Critical(args ...any) {
+	s.internal.Info(args...)
 }
 
-func (s *EmptyLogger) With(args ...interface{}) Logging {
-	return &EmptyLogger{}
+func (s *SugarLogger) Criticalf(template string, args ...any) {
+	s.internal.Infof(template, args...)
 }
 
-func (s *EmptyLogger) Debug(args ...interface{}) {
+type CriticalLogger struct {
+	internal *zap.SugaredLogger
 }
 
-func (s *EmptyLogger) Info(args ...interface{}) {
+func (s *CriticalLogger) With(args ...any) Logging {
+	return &CriticalLogger{}
 }
 
-func (s *EmptyLogger) Warn(args ...interface{}) {
+func (s *CriticalLogger) Debug(args ...any) {
 }
 
-func (s *EmptyLogger) Error(args ...interface{}) {
+func (s *CriticalLogger) Info(args ...any) {
 }
 
-func (s *EmptyLogger) Fatal(args ...interface{}) {
-	log.Fatal(args...)
+func (s *CriticalLogger) Warn(args ...any) {
 }
 
-func (s *EmptyLogger) Debugf(template string, args ...interface{}) {
+func (s *CriticalLogger) Error(args ...any) {
 }
 
-func (s *EmptyLogger) Infof(template string, args ...interface{}) {
+func (s *CriticalLogger) Fatal(args ...any) {
+	s.internal.Fatal(args...)
 }
 
-func (s *EmptyLogger) Warnf(template string, args ...interface{}) {
+func (s *CriticalLogger) Debugf(template string, args ...any) {
 }
 
-func (s *EmptyLogger) Errorf(template string, args ...interface{}) {
+func (s *CriticalLogger) Infof(template string, args ...any) {
 }
 
-func (s *EmptyLogger) Fatalf(template string, args ...interface{}) {
-	log.Fatalf(template, args...)
+func (s *CriticalLogger) Warnf(template string, args ...any) {
+}
+
+func (s *CriticalLogger) Errorf(template string, args ...any) {
+}
+
+func (s *CriticalLogger) Fatalf(template string, args ...any) {
+	s.internal.Fatalf(template, args...)
+}
+
+func (s *CriticalLogger) Critical(args ...any) {
+	s.internal.Info(args...)
+}
+
+func (s *CriticalLogger) Criticalf(template string, args ...any) {
+	s.internal.Infof(template, args...)
 }
 
 func GetCallStack() string {
 	return string(debug.Stack())
 }
 
-func appendCallstack(template string, args ...interface{}) string {
+func appendCallstack(template string, args ...any) string {
 	liquidated := fmt.Sprintf(template, args...)
 	stack := strings.ReplaceAll(GetCallStack(), `\n`, "\n")
 	return fmt.Sprintf("%s\nCallstack:\n%s", liquidated, stack)
