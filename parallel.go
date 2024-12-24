@@ -6,7 +6,10 @@ import (
 	"time"
 )
 
-func RunInParallel(numWorkers int, sleepIntermittent time.Duration, params chan any, op func(any) error) error {
+func RunInParallel(
+	numWorkers int, sleepIntermittent time.Duration, params chan any,
+	onRun func(any) error, onComplete func() error,
+) error {
 	if numWorkers <= 0 {
 		return fmt.Errorf("number of workers must be positive")
 	}
@@ -26,7 +29,7 @@ func RunInParallel(numWorkers int, sleepIntermittent time.Duration, params chan 
 			for param := range params {
 				defer time.Sleep(sleepIntermittent)
 
-				if err := op(param); err != nil {
+				if err := onRun(param); err != nil {
 					errChan <- fmt.Errorf("worker %d failed processing %+v: %v", workerID, param, err)
 					return
 				}
@@ -37,6 +40,10 @@ func RunInParallel(numWorkers int, sleepIntermittent time.Duration, params chan 
 	// Wait for all workers to finish
 	wg.Wait()
 	close(errChan)
+
+	if err := onComplete(); err != nil {
+		return fmt.Errorf("failed on onComplete: %v", err)
+	}
 
 	// Collect any errors
 	var errors []error
