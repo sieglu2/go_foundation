@@ -12,8 +12,7 @@ import (
 )
 
 var (
-	// globalLogger is global zap logger.
-	globalLogger Logging = NewSugarLogger(getLogLevel())
+	globalLogger Logging = NewSimpleLogger(getLogLevel())
 )
 
 func getLogLevel() string {
@@ -51,6 +50,13 @@ func OverrideGlobalLogger(logging Logging) {
 	globalLogger = logging
 }
 
+func NewSimpleLogger(lvlStr string) *SimpleLogger {
+	zapLogger := newZapLogger(lvlStr)
+	return &SimpleLogger{
+		internal: zapLogger,
+	}
+}
+
 func NewSugarLogger(lvlStr string) *SugarLogger {
 	zapLogger := newZapLogger(lvlStr)
 	return &SugarLogger{
@@ -58,9 +64,9 @@ func NewSugarLogger(lvlStr string) *SugarLogger {
 	}
 }
 
-func NewCriticalLogger() *CriticalLogger {
+func NewCriticalOnlyLogger() *CriticalOnlyLogger {
 	zapLogger := newZapLogger("info")
-	return &CriticalLogger{
+	return &CriticalOnlyLogger{
 		internal: zapLogger,
 	}
 }
@@ -104,6 +110,66 @@ func newZapLogger(lvlStr string) *zap.SugaredLogger {
 	return zapLogger.Sugar()
 }
 
+// SimpleLogger
+type SimpleLogger struct {
+	internal *zap.SugaredLogger
+}
+
+func (s *SimpleLogger) With(args ...any) Logging {
+	return &SimpleLogger{
+		internal: s.internal.With(args...),
+	}
+}
+
+func (s *SimpleLogger) Debug(args ...any) {
+	s.internal.Debug(args...)
+}
+
+func (s *SimpleLogger) Info(args ...any) {
+	s.internal.Info(args...)
+}
+
+func (s *SimpleLogger) Warn(args ...any) {
+	s.internal.Warn(append(args, "\nCallstack:\n", GetCallStack()))
+}
+
+func (s *SimpleLogger) Error(args ...any) {
+	s.internal.Error(append(args, "\nCallstack:\n", GetCallStack()))
+}
+
+func (s *SimpleLogger) Fatal(args ...any) {
+	s.internal.Fatal(append(args, "\nCallstack:\n", GetCallStack()))
+}
+
+func (s *SimpleLogger) Debugf(template string, args ...any) {
+	s.internal.Debugf(template, args...)
+}
+
+func (s *SimpleLogger) Infof(template string, args ...any) {
+	s.internal.Infof(template, args...)
+}
+
+func (s *SimpleLogger) Warnf(template string, args ...any) {
+	s.internal.Warnf(template, args...)
+}
+
+func (s *SimpleLogger) Errorf(template string, args ...any) {
+	s.internal.Errorf(template, args...)
+}
+
+func (s *SimpleLogger) Fatalf(template string, args ...any) {
+	s.internal.Fatalf(template, args...)
+}
+
+func (s *SimpleLogger) Critical(args ...any) {
+	s.internal.Info(args...)
+}
+
+func (s *SimpleLogger) Criticalf(template string, args ...any) {
+	s.internal.Infof(template, args...)
+}
+
+// SugarLogger
 type SugarLogger struct {
 	internal *zap.SugaredLogger
 }
@@ -162,51 +228,52 @@ func (s *SugarLogger) Criticalf(template string, args ...any) {
 	s.internal.Infof(template, args...)
 }
 
-type CriticalLogger struct {
+// CriticalOnlyLogger
+type CriticalOnlyLogger struct {
 	internal *zap.SugaredLogger
 }
 
-func (s *CriticalLogger) With(args ...any) Logging {
-	return &CriticalLogger{}
+func (s *CriticalOnlyLogger) With(args ...any) Logging {
+	return &CriticalOnlyLogger{}
 }
 
-func (s *CriticalLogger) Debug(args ...any) {
+func (s *CriticalOnlyLogger) Debug(args ...any) {
 }
 
-func (s *CriticalLogger) Info(args ...any) {
+func (s *CriticalOnlyLogger) Info(args ...any) {
 }
 
-func (s *CriticalLogger) Warn(args ...any) {
+func (s *CriticalOnlyLogger) Warn(args ...any) {
 }
 
-func (s *CriticalLogger) Error(args ...any) {
+func (s *CriticalOnlyLogger) Error(args ...any) {
 }
 
-func (s *CriticalLogger) Fatal(args ...any) {
+func (s *CriticalOnlyLogger) Fatal(args ...any) {
 	s.internal.Fatal(args...)
 }
 
-func (s *CriticalLogger) Debugf(template string, args ...any) {
+func (s *CriticalOnlyLogger) Debugf(template string, args ...any) {
 }
 
-func (s *CriticalLogger) Infof(template string, args ...any) {
+func (s *CriticalOnlyLogger) Infof(template string, args ...any) {
 }
 
-func (s *CriticalLogger) Warnf(template string, args ...any) {
+func (s *CriticalOnlyLogger) Warnf(template string, args ...any) {
 }
 
-func (s *CriticalLogger) Errorf(template string, args ...any) {
+func (s *CriticalOnlyLogger) Errorf(template string, args ...any) {
 }
 
-func (s *CriticalLogger) Fatalf(template string, args ...any) {
+func (s *CriticalOnlyLogger) Fatalf(template string, args ...any) {
 	s.internal.Fatalf(template, args...)
 }
 
-func (s *CriticalLogger) Critical(args ...any) {
+func (s *CriticalOnlyLogger) Critical(args ...any) {
 	s.internal.Info(args...)
 }
 
-func (s *CriticalLogger) Criticalf(template string, args ...any) {
+func (s *CriticalOnlyLogger) Criticalf(template string, args ...any) {
 	s.internal.Infof(template, args...)
 }
 
