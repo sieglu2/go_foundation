@@ -7,7 +7,8 @@ import (
 )
 
 func RunInParallel(
-	numWorkers int, sleepIntermittent time.Duration, params chan any,
+	numWorkers int, sleepIntermittent time.Duration,
+	params chan any, paramLength int,
 	onRun func(any) error, onComplete func([]error) error,
 ) error {
 	if numWorkers <= 0 {
@@ -16,7 +17,7 @@ func RunInParallel(
 
 	var wg sync.WaitGroup
 
-	errChan := make(chan error, numWorkers)
+	errChan := make(chan error, paramLength)
 
 	for i := 0; i < numWorkers; i += 1 {
 		wg.Add(1)
