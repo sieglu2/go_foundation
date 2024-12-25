@@ -18,15 +18,20 @@ func DoRetry(
 	backoffConfig := backoff.WithMaxRetries(backoff.NewConstantBackOff(backoffWait), uint64(maxTimes))
 
 	err := backoff.Retry(func() error {
-		if ctx.Err() == context.DeadlineExceeded || ctx.Err() == context.Canceled {
-			return nil
+		// Change this part
+		if ctx.Err() != nil {
+			return backoff.Permanent(ctx.Err()) // Mark as permanent error to stop retrying
 		}
 
 		timeoutCtx, timeoutCancel := context.WithTimeout(ctx, execTimeout)
-		insideErr := exec(timeoutCtx)
-		timeoutCancel()
+		defer timeoutCancel() // Better to use defer here
 
-		return insideErr
+		insideErr := exec(timeoutCtx)
+		if insideErr != nil {
+			return insideErr // Let backoff decide if it should retry
+		}
+
+		return nil
 	}, backoffConfig)
 
 	if err != nil {
