@@ -8,7 +8,7 @@ import (
 
 func RunInParallel(
 	numWorkers int, sleepIntermittent time.Duration,
-	params chan any, paramLength int,
+	params chan any,
 	onRun func(any) error, onComplete func([]error) error,
 ) error {
 	if numWorkers <= 0 {
@@ -16,10 +16,20 @@ func RunInParallel(
 	}
 
 	var wg sync.WaitGroup
+	errChan := make(chan error) // Unbuffered error channel
 
-	errChan := make(chan error, paramLength)
+	// Start a goroutine to collect errors
+	errorCollectorDone := make(chan struct{})
+	var errors []error
+	go func() {
+		defer close(errorCollectorDone)
+		for err := range errChan {
+			errors = append(errors, err)
+		}
+	}()
 
-	for i := 0; i < numWorkers; i += 1 {
+	// Start worker goroutines
+	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
@@ -34,17 +44,12 @@ func RunInParallel(
 		}(i)
 	}
 
-	// Start a goroutine to close errChan after all workers finish
-	go func() {
-		wg.Wait()
-		close(errChan)
-	}()
+	// Wait for all workers to finish, then close error channel
+	wg.Wait()
+	close(errChan)
 
-	// Collect any errors
-	var errors []error
-	for err := range errChan {
-		errors = append(errors, err)
-	}
+	// Wait for error collector to finish
+	<-errorCollectorDone
 
 	// Run onComplete after collecting errors
 	if err := onComplete(errors); err != nil {
