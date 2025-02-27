@@ -6,6 +6,25 @@ import (
 	"time"
 )
 
+/*
+Run the process in parallel, with multiple goroutines.
+General usage pattern:
+
+	myChan := make(chan any, len(bufferSize))
+	for _, my := range sourceData {
+		myChan <- my
+	}
+	close(myChan)
+
+	err := common.RunInParallel(5, time.Second, myChan, func(a any) error {
+		param := a.(MyType)
+		// your code here...
+		return nil
+	}, func(err []error) error {
+		// your code here...
+		return nil
+	})
+*/
 func RunInParallel(
 	numWorkers int, sleepIntermittent time.Duration,
 	params chan any,
