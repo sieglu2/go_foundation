@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/sieglu2/go_foundation/foundation"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -19,7 +20,7 @@ type ExcelWriter struct {
 }
 
 func CreateEmptyExcelSheet(fileName string, sheetNames []string) (*ExcelWriter, error) {
-	logger := Logger()
+	logger := foundation.Logger()
 
 	if len(sheetNames) == 0 {
 		logger.Errorf("no sheetNames given")

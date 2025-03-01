@@ -1,0 +1,18 @@
+{
+    "chatgpt": {
+        "account_name": "my_openai",
+        "service_name": "chatgpt" 
+    },
+    "claude": {
+        "account_name": "my_anthropic",
+        "service_name": "claude"
+    },
+    "deepseek": {
+        "account_name": "my_deepseek",
+        "service_name": "deepseek"
+    },
+    "minimax": {
+        "account_name": "my_hailuoai",
+        "service_name": "minimax"
+    }
+}
