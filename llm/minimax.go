@@ -84,6 +84,10 @@ func NewMinimaxClientWithConfig(apiKey string, maxTokens int, model string) *Min
 	}
 }
 
+func (t *MinimaxClient) Close() error {
+	return nil
+}
+
 func convertToMinimaxMessages(llmMessages []LlmMessage) ([]MinimaxMessage, error) {
 	logger := foundation.Logger()
 

@@ -2,7 +2,7 @@
 
 if [ "$#" -ne 2 ]; then
     echo "Usage: $0 <provider> <secret_key>"
-    echo "Supported providers: chatgpt,claude,deepseek,minimax"
+    echo "Supported providers: chatgpt,claude,deepseek,gemini,minimax"
     exit 1
 fi
 
@@ -22,12 +22,16 @@ case "$provider" in
         account_name="my_deepseek"
         service_name="deepseek"
         ;;
+    "gemini")
+        account_name="my_google"
+        service_name="gemini"
+        ;;
     "minimax")
         account_name="my_hailuoai"
         service_name="minimax"
         ;;
     *)
-        echo "Error: Invalid provider. Supported providers: chatgpt,claude,deepseek,minimax"
+        echo "Error: Invalid provider. Supported providers: chatgpt,claude,deepseek,gemini,minimax"
         exit 1
         ;;
 esac

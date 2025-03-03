@@ -67,6 +67,10 @@ func NewClaudeClientWithConfig(apiKey string, maxTokens int, model string) *Clau
 	}
 }
 
+func (t *ClaudeClient) Close() error {
+	return nil
+}
+
 func convertToClaudeMessages(messages []LlmMessage) []claudeMessage {
 	claudeMessages := make([]claudeMessage, 0, len(messages))
 

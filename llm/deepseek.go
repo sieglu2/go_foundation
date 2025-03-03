@@ -69,6 +69,10 @@ func NewDeepseekClientWithConfig(apiKey string, maxTokens int, model string) *De
 	}
 }
 
+func (t *DeepseekClient) Close() error {
+	return nil
+}
+
 func convertToDeepseekMessages(messages []LlmMessage) []deepseekMessage {
 	logger := foundation.Logger()
 	deepseekMessages := make([]deepseekMessage, 0, len(messages))

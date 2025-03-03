@@ -32,6 +32,10 @@ func NewChatGptClientWithConfig(apiKey string, maxTokens int, model string) *Cha
 	}
 }
 
+func (t *ChatGptClient) Close() error {
+	return nil
+}
+
 func convertToChatGptMessages(chatGptMessages []LlmMessage) ([]openai.ChatCompletionMessage, error) {
 	logger := foundation.Logger()
 

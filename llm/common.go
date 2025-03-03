@@ -28,6 +28,7 @@ type LlmMessage struct {
 
 type LlmClient interface {
 	ReplyMessage(ctx context.Context, messages []LlmMessage) (string, error)
+	Close() error
 }
 
 func NewLlmClient() (LlmClient, error) {
@@ -47,6 +48,20 @@ func NewLlmClient() (LlmClient, error) {
 		return NewChatGptClient(chatgptApiKey), nil
 	}
 	errors = append(errors, fmt.Errorf("chatgpt client init failed: %w", err))
+
+	geminiApiKey, err := getSecretKey(geminiSecretAccountName, geminiSecretServiceName)
+	if err == nil {
+		logger.Infof("using gemini client")
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		geminiClient, err := NewGeminiClient(ctx, geminiApiKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create gemini client: %v", err)
+		}
+		return geminiClient, nil
+	}
 
 	deepseekApiKey, err := getSecretKey(deepseekSecretAccountName, deepseekSecretServiceName)
 	if err == nil {

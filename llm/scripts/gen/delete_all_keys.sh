@@ -23,6 +23,9 @@ delete_credential "my_anthropic" "claude" "claude"
 # Delete deepseek credentials
 delete_credential "my_deepseek" "deepseek" "deepseek"
 
+# Delete gemini credentials
+delete_credential "my_google" "gemini" "gemini"
+
 # Delete minimax credentials
 delete_credential "my_hailuoai" "minimax" "minimax"
 

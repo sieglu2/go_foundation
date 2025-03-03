@@ -7,6 +7,10 @@
         "account_name": "my_anthropic",
         "service_name": "claude"
     },
+    "gemini": {
+        "account_name": "my_google",
+        "service_name": "gemini"
+    },
     "deepseek": {
         "account_name": "my_deepseek",
         "service_name": "deepseek"
