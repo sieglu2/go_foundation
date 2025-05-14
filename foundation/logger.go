@@ -12,23 +12,24 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-type SugarLogFormat string
-
-const (
-	SugarLogFormat_Json    = SugarLogFormat("json")
-	SugarLogFormat_Console = SugarLogFormat("console")
-)
-
 var (
-	globalLogger Logging = NewSugarLogger(getLogLevel(), SugarLogFormat_Console)
+	globalLogger Logging = NewSugarLogger(getLogLevel(), getLogFormat())
 )
 
 func getLogLevel() string {
-	levelFromEnv := os.Getenv("LOG_LEVEL")
+	levelFromEnv := os.Getenv("ZAP_LOG_LEVEL")
 	if len(levelFromEnv) == 0 {
 		levelFromEnv = "debug"
 	}
-	return levelFromEnv
+	return strings.ToLower(levelFromEnv)
+}
+
+func getLogFormat() string {
+	logFormatFromEnv := os.Getenv("ZAP_LOG_FORMAT")
+	if len(logFormatFromEnv) == 0 {
+		logFormatFromEnv = "console"
+	}
+	return strings.ToLower(logFormatFromEnv)
 }
 
 type Logging interface {
@@ -75,16 +76,16 @@ func NewSimpleLogger(lvlStr string) *SimpleLogger {
 	}
 }
 
-func NewSugarLogger(lvlStr string, logFormat SugarLogFormat) *SugarLogger {
+func NewSugarLogger(lvlStr string, logFormat string) *SugarLogger {
 	var consoleEncoder zapcore.Encoder
 
 	switch logFormat {
-	case SugarLogFormat_Json:
+	case "json":
 		cfg := zap.NewProductionEncoderConfig()
 		cfg.EncodeTime = zapcore.RFC3339TimeEncoder
 		consoleEncoder = zapcore.NewJSONEncoder(cfg)
 
-	case SugarLogFormat_Console:
+	case "console":
 		cfg := zap.NewDevelopmentEncoderConfig()
 		cfg.EncodeLevel = zapcore.CapitalLevelEncoder
 		cfg.EncodeTime = zapcore.RFC3339TimeEncoder
