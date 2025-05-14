@@ -6,19 +6,27 @@ import (
 	"os"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
+type SugarLogFormat string
+
+const (
+	SugarLogFormat_Json    = SugarLogFormat("json")
+	SugarLogFormat_Console = SugarLogFormat("console")
+)
+
 var (
-	globalLogger Logging = NewSimpleLogger(getLogLevel())
+	globalLogger Logging = NewSugarLogger(getLogLevel(), SugarLogFormat_Console)
 )
 
 func getLogLevel() string {
 	levelFromEnv := os.Getenv("LOG_LEVEL")
 	if len(levelFromEnv) == 0 {
-		levelFromEnv = "info"
+		levelFromEnv = "debug"
 	}
 	return levelFromEnv
 }
@@ -46,32 +54,63 @@ func Logger() Logging {
 	return globalLogger
 }
 
-func OverrideGlobalLogger(logging Logging) {
+func LoadGlobalLogger(logging Logging) {
 	globalLogger = logging
 }
 
 func NewSimpleLogger(lvlStr string) *SimpleLogger {
-	zapLogger := newZapLogger(lvlStr)
+	consoleEncoder := zapcore.NewConsoleEncoder(zapcore.EncoderConfig{
+		MessageKey: "msg",
+		EncodeLevel: func(l zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
+			// Don't encode level
+		},
+		EncodeTime: func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+			// Don't encode timestamp
+		},
+		EncodeDuration: zapcore.StringDurationEncoder,
+	})
+
 	return &SimpleLogger{
-		internal: zapLogger,
+		internal: newZapLogger(lvlStr, consoleEncoder),
 	}
 }
 
-func NewSugarLogger(lvlStr string) *SugarLogger {
-	zapLogger := newZapLogger(lvlStr)
+func NewSugarLogger(lvlStr string, logFormat SugarLogFormat) *SugarLogger {
+	var consoleEncoder zapcore.Encoder
+
+	switch logFormat {
+	case SugarLogFormat_Json:
+		cfg := zap.NewProductionEncoderConfig()
+		cfg.EncodeTime = zapcore.RFC3339TimeEncoder
+		consoleEncoder = zapcore.NewJSONEncoder(cfg)
+
+	case SugarLogFormat_Console:
+		cfg := zap.NewDevelopmentEncoderConfig()
+		cfg.EncodeLevel = zapcore.CapitalLevelEncoder
+		cfg.EncodeTime = zapcore.RFC3339TimeEncoder
+		consoleEncoder = zapcore.NewConsoleEncoder(cfg)
+
+	default:
+		log.Fatalf("Unsupported log format: %s", logFormat)
+	}
+
 	return &SugarLogger{
-		internal: zapLogger,
+		internal: newZapLogger(lvlStr, consoleEncoder),
 	}
 }
 
 func NewCriticalOnlyLogger() *CriticalOnlyLogger {
-	zapLogger := newZapLogger("info")
+	cfg := zap.NewDevelopmentEncoderConfig()
+	cfg.EncodeLevel = zapcore.CapitalLevelEncoder
+	cfg.EncodeTime = zapcore.RFC3339TimeEncoder
+	consoleEncoder := zapcore.NewConsoleEncoder(cfg)
+
 	return &CriticalOnlyLogger{
-		internal: zapLogger,
+		internal: newZapLogger("info", consoleEncoder),
 	}
 }
 
-func newZapLogger(lvlStr string) *zap.SugaredLogger {
+func newZapLogger(lvlStr string, encoder zapcore.Encoder) *zap.SugaredLogger {
 	// First, define our level-handling logic.
 	targetLevel, err := zapcore.ParseLevel(lvlStr)
 	if err != nil {
@@ -80,9 +119,6 @@ func newZapLogger(lvlStr string) *zap.SugaredLogger {
 
 	// High-priority output should also go to standard error, and low-priority
 	// output should also go to standard out.
-	// It is useful for Kubernetes deployment.
-	// Kubernetes interprets os.Stdout log items as INFO and os.Stderr log items
-	// as ERROR by default.
 	highPriority := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
 		return lvl >= zapcore.ErrorLevel
 	})
@@ -92,15 +128,10 @@ func newZapLogger(lvlStr string) *zap.SugaredLogger {
 	consoleInfos := zapcore.Lock(os.Stdout)
 	consoleErrors := zapcore.Lock(os.Stderr)
 
-	// Configure console output.
-	cfg := zap.NewProductionEncoderConfig()
-	cfg.EncodeTime = zapcore.RFC3339TimeEncoder
-	consoleEncoder := zapcore.NewJSONEncoder(cfg)
-
 	// Join the outputs, encoders, and level-handling functions into zapcore
 	core := zapcore.NewTee(
-		zapcore.NewCore(consoleEncoder, consoleErrors, highPriority),
-		zapcore.NewCore(consoleEncoder, consoleInfos, lowPriority),
+		zapcore.NewCore(encoder, consoleErrors, highPriority),
+		zapcore.NewCore(encoder, consoleInfos, lowPriority),
 	)
 
 	// From a zapcore.Core, it's easy to construct a Logger.
@@ -130,11 +161,11 @@ func (s *SimpleLogger) Info(args ...any) {
 }
 
 func (s *SimpleLogger) Warn(args ...any) {
-	s.internal.Warn(append(args, "\nCallstack:\n", GetCallStack()))
+	s.internal.Warn(args...)
 }
 
 func (s *SimpleLogger) Error(args ...any) {
-	s.internal.Error(append(args, "\nCallstack:\n", GetCallStack()))
+	s.internal.Error(args...)
 }
 
 func (s *SimpleLogger) Fatal(args ...any) {
