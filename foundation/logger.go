@@ -12,6 +12,12 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+const (
+	colorRed    = "\033[31m"
+	colorYellow = "\033[33m"
+	colorReset  = "\033[0m"
+)
+
 var (
 	globalLogger Logging = NewSugarLogger(getLogLevel(), getLogFormat())
 )
@@ -19,7 +25,7 @@ var (
 func getLogLevel() string {
 	levelFromEnv := os.Getenv("ZAP_LOG_LEVEL")
 	if len(levelFromEnv) == 0 {
-		levelFromEnv = "debug"
+		levelFromEnv = "info"
 	}
 	return strings.ToLower(levelFromEnv)
 }
@@ -46,9 +52,6 @@ type Logging interface {
 	Warnf(template string, args ...any)
 	Errorf(template string, args ...any)
 	Fatalf(template string, args ...any)
-
-	Critical(args ...any)
-	Criticalf(template string, args ...any)
 }
 
 func Logger() Logging {
@@ -97,17 +100,6 @@ func NewSugarLogger(lvlStr string, logFormat string) *SugarLogger {
 
 	return &SugarLogger{
 		internal: newZapLogger(lvlStr, consoleEncoder),
-	}
-}
-
-func NewCriticalOnlyLogger() *CriticalOnlyLogger {
-	cfg := zap.NewDevelopmentEncoderConfig()
-	cfg.EncodeLevel = zapcore.CapitalLevelEncoder
-	cfg.EncodeTime = zapcore.RFC3339TimeEncoder
-	consoleEncoder := zapcore.NewConsoleEncoder(cfg)
-
-	return &CriticalOnlyLogger{
-		internal: newZapLogger("info", consoleEncoder),
 	}
 }
 
@@ -193,14 +185,6 @@ func (s *SimpleLogger) Fatalf(template string, args ...any) {
 	s.internal.Fatalf(template, args...)
 }
 
-func (s *SimpleLogger) Critical(args ...any) {
-	s.internal.Info(args...)
-}
-
-func (s *SimpleLogger) Criticalf(template string, args ...any) {
-	s.internal.Infof(template, args...)
-}
-
 // SugarLogger
 type SugarLogger struct {
 	internal *zap.SugaredLogger
@@ -221,15 +205,18 @@ func (s *SugarLogger) Info(args ...any) {
 }
 
 func (s *SugarLogger) Warn(args ...any) {
-	s.internal.Warn(append(args, "\nCallstack:\n", GetCallStack()))
+	finalMsg := fmt.Sprintf("%v\nCallstack:\n%s", fmt.Sprint(args...), GetCallStack())
+	s.internal.Warn(colorizeMessage(colorYellow, finalMsg))
 }
 
 func (s *SugarLogger) Error(args ...any) {
-	s.internal.Error(append(args, "\nCallstack:\n", GetCallStack()))
+	finalMsg := fmt.Sprintf("%v\nCallstack:\n%s", fmt.Sprint(args...), GetCallStack())
+	s.internal.Error(colorizeMessage(colorRed, finalMsg))
 }
 
 func (s *SugarLogger) Fatal(args ...any) {
-	s.internal.Fatal(append(args, "\nCallstack:\n", GetCallStack()))
+	finalMsg := fmt.Sprintf("%v\nCallstack:\n%s", fmt.Sprint(args...), GetCallStack())
+	s.internal.Fatal(colorizeMessage(colorRed, finalMsg))
 }
 
 func (s *SugarLogger) Debugf(template string, args ...any) {
@@ -241,72 +228,18 @@ func (s *SugarLogger) Infof(template string, args ...any) {
 }
 
 func (s *SugarLogger) Warnf(template string, args ...any) {
-	s.internal.Warn(appendCallstack(template, args...))
+	finalMsg := appendCallstack(template, args...)
+	s.internal.Warn(colorizeMessage(colorYellow, finalMsg))
 }
 
 func (s *SugarLogger) Errorf(template string, args ...any) {
-	s.internal.Error(appendCallstack(template, args...))
+	finalMsg := appendCallstack(template, args...)
+	s.internal.Error(colorizeMessage(colorRed, finalMsg))
 }
 
 func (s *SugarLogger) Fatalf(template string, args ...any) {
-	s.internal.Fatal(appendCallstack(template, args...))
-}
-
-func (s *SugarLogger) Critical(args ...any) {
-	s.internal.Info(args...)
-}
-
-func (s *SugarLogger) Criticalf(template string, args ...any) {
-	s.internal.Infof(template, args...)
-}
-
-// CriticalOnlyLogger
-type CriticalOnlyLogger struct {
-	internal *zap.SugaredLogger
-}
-
-func (s *CriticalOnlyLogger) With(args ...any) Logging {
-	return &CriticalOnlyLogger{}
-}
-
-func (s *CriticalOnlyLogger) Debug(args ...any) {
-}
-
-func (s *CriticalOnlyLogger) Info(args ...any) {
-}
-
-func (s *CriticalOnlyLogger) Warn(args ...any) {
-}
-
-func (s *CriticalOnlyLogger) Error(args ...any) {
-}
-
-func (s *CriticalOnlyLogger) Fatal(args ...any) {
-	s.internal.Fatal(args...)
-}
-
-func (s *CriticalOnlyLogger) Debugf(template string, args ...any) {
-}
-
-func (s *CriticalOnlyLogger) Infof(template string, args ...any) {
-}
-
-func (s *CriticalOnlyLogger) Warnf(template string, args ...any) {
-}
-
-func (s *CriticalOnlyLogger) Errorf(template string, args ...any) {
-}
-
-func (s *CriticalOnlyLogger) Fatalf(template string, args ...any) {
-	s.internal.Fatalf(template, args...)
-}
-
-func (s *CriticalOnlyLogger) Critical(args ...any) {
-	s.internal.Info(args...)
-}
-
-func (s *CriticalOnlyLogger) Criticalf(template string, args ...any) {
-	s.internal.Infof(template, args...)
+	finalMsg := appendCallstack(template, args...)
+	s.internal.Fatal(colorizeMessage(colorRed, finalMsg))
 }
 
 func GetCallStack() string {
@@ -317,4 +250,8 @@ func appendCallstack(template string, args ...any) string {
 	liquidated := fmt.Sprintf(template, args...)
 	stack := strings.ReplaceAll(GetCallStack(), `\n`, "\n")
 	return fmt.Sprintf("%s\nCallstack:\n%s", liquidated, stack)
+}
+
+func colorizeMessage(color, message string) string {
+	return fmt.Sprintf("%s%s%s", color, message, colorReset)
 }
