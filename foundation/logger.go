@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	colorRed    = "\033[31m"
-	colorYellow = "\033[33m"
-	colorReset  = "\033[0m"
+	LogColorRed    = "\033[31m"
+	LogColorYellow = "\033[33m"
+	LogColorReset  = "\033[0m"
 )
 
 var (
@@ -206,17 +206,17 @@ func (s *SugarLogger) Info(args ...any) {
 
 func (s *SugarLogger) Warn(args ...any) {
 	finalMsg := fmt.Sprintf("%v\nCallstack:\n%s", fmt.Sprint(args...), GetCallStack())
-	s.internal.Warn(colorizeMessage(colorYellow, finalMsg))
+	s.internal.Warn(ColorizeMessage(LogColorYellow, finalMsg))
 }
 
 func (s *SugarLogger) Error(args ...any) {
 	finalMsg := fmt.Sprintf("%v\nCallstack:\n%s", fmt.Sprint(args...), GetCallStack())
-	s.internal.Error(colorizeMessage(colorRed, finalMsg))
+	s.internal.Error(ColorizeMessage(LogColorRed, finalMsg))
 }
 
 func (s *SugarLogger) Fatal(args ...any) {
 	finalMsg := fmt.Sprintf("%v\nCallstack:\n%s", fmt.Sprint(args...), GetCallStack())
-	s.internal.Fatal(colorizeMessage(colorRed, finalMsg))
+	s.internal.Fatal(ColorizeMessage(LogColorRed, finalMsg))
 }
 
 func (s *SugarLogger) Debugf(template string, args ...any) {
@@ -229,17 +229,17 @@ func (s *SugarLogger) Infof(template string, args ...any) {
 
 func (s *SugarLogger) Warnf(template string, args ...any) {
 	finalMsg := appendCallstack(template, args...)
-	s.internal.Warn(colorizeMessage(colorYellow, finalMsg))
+	s.internal.Warn(ColorizeMessage(LogColorYellow, finalMsg))
 }
 
 func (s *SugarLogger) Errorf(template string, args ...any) {
 	finalMsg := appendCallstack(template, args...)
-	s.internal.Error(colorizeMessage(colorRed, finalMsg))
+	s.internal.Error(ColorizeMessage(LogColorRed, finalMsg))
 }
 
 func (s *SugarLogger) Fatalf(template string, args ...any) {
 	finalMsg := appendCallstack(template, args...)
-	s.internal.Fatal(colorizeMessage(colorRed, finalMsg))
+	s.internal.Fatal(ColorizeMessage(LogColorRed, finalMsg))
 }
 
 func GetCallStack() string {
@@ -252,6 +252,6 @@ func appendCallstack(template string, args ...any) string {
 	return fmt.Sprintf("%s\nCallstack:\n%s", liquidated, stack)
 }
 
-func colorizeMessage(color, message string) string {
-	return fmt.Sprintf("%s%s%s", color, message, colorReset)
+func ColorizeMessage(color, message string) string {
+	return fmt.Sprintf("%s%s%s", color, message, LogColorReset)
 }
